@@ -1,547 +1,424 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Project Dashboard</title>
-<style>
-  :root{
-    --bg:#0b1220;
-    --card:#0f1726;
-    --muted:#94a3b8;
-    --accent:#7c3aed;
-    --accent-2:#06b6d4;
-    --green:#10b981;
-    --danger:#ef4444;
-    --pill-bg:#111827;
-  }
-  html,body{height:100%; margin:0; font-family:Inter,ui-sans-serif,system-ui,Arial, Helvetica, sans-serif; background:linear-gradient(180deg,#071226 0%, #071827 100%); color:#e6eef8;}
-  .wrap{max-width:1200px; margin:32px auto; padding:20px;}
-  .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px;}
-  .title{font-size:20px; font-weight:700; color:#e8f0ff;}
-  .controls{display:flex; gap:10px; align-items:center;}
-  .search{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.03); padding:10px 14px; border-radius:10px; color:var(--muted); min-width:260px;}
-  .select, .btn { padding:8px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:600; }
-  .select { background:rgba(255,255,255,0.02); color:var(--muted); border:1px solid rgba(255,255,255,0.03); }
-  .btn-primary{ background: linear-gradient(90deg,var(--accent), #5b21b6); color:white; box-shadow:0 6px 18px rgba(124,58,237,0.12); }
-  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.03); }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Work-wise Table — Shared (Google Sheets)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa3b2;--accent:#0ea5a6;--accent-2:#7c3aed}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,#071226 0%, #071a2b 100%);color:#e6eef6;min-height:100vh;padding:28px}
+    .container{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:10px;align-items:center}
+    .controls input[type=text], .controls select{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:inherit}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:none;color:white;padding:8px 12px;border-radius:10px;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    .card{background:rgba(255,255,255,0.02);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.5)}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03);font-size:14px}
+    th{cursor:pointer;user-select:none}
+    tr:hover td{background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00))}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px}
+    .tag.open{background:rgba(14,165,166,0.12);color:var(--accent)}
+    .tag.progress{background:rgba(124,58,237,0.12);color:var(--accent-2)}
+    .tag.done{background:rgba(34,197,94,0.12);color:#22c55e}
+    .actions button{margin-right:6px;padding:6px 8px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:inherit;cursor:pointer}
+    .small{font-size:12px;color:var(--muted)}
+    .flex{display:flex;gap:8px;align-items:center}
+    .progressbar{height:8px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden;width:120px}
+    .progress-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+    /* responsive */
+    @media (max-width:800px){
+      table thead{display:none}
+      table,tbody,tr,td{display:block;width:100%}
+      tr{margin-bottom:12px}
+      td{padding:10px;border-bottom:0;background:rgba(255,255,255,0.02)}
+      td:before{content:attr(data-label);display:block;font-weight:600;color:var(--muted);margin-bottom:6px}
+    }
 
-  /* Card */
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:18px; box-shadow: 0 6px 30px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.02);}
-  .note{color:var(--muted); font-size:13px; margin-bottom:10px;}
-
-  /* Table */
-  table{width:100%; border-collapse:collapse; margin-top:8px;}
-  thead th{ text-align:left; padding:12px 16px; color: #b9c7da; font-size:13px; font-weight:700; background:transparent; border-bottom:1px solid rgba(255,255,255,0.03); }
-  tbody td{ padding:14px 16px; color:#d6e7fb; font-size:14px; border-bottom:1px solid rgba(255,255,255,0.02); vertical-align:middle; }
-  tbody tr:hover td{ background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); }
-
-  .pill{ display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; color:white; background:var(--pill-bg); }
-  .pill.open{ background:linear-gradient(90deg,#06b6d4,#0ea5a4); }
-  .pill.progress{ background:linear-gradient(90deg,#7c3aed,#06b6d4); }
-  .pill.done{ background:linear-gradient(90deg,#10b981,#059669); color:white; }
-  .pill.other{ background:rgba(255,255,255,0.06); color:#cfe8ff; }
-
-  .actions{ display:flex; gap:8px; }
-  .a-edit{ background:rgba(255,255,255,0.03); color:#dbeafe; padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); cursor:pointer;}
-  .a-del{ background:rgba(255,255,255,0.02); color:#ffd5d5; padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); cursor:pointer;}
-  .a-view{ background:rgba(255,255,255,0.02); color:#7dd3fc; padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); cursor:pointer;}
-
-  /* Progress bar */
-  .progress-wrap{ width:140px; height:10px; background:rgba(255,255,255,0.03); border-radius:999px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:8px;}
-  .progress-bar{ height:100%; background:linear-gradient(90deg,#7c3aed,#06b6d4); width:0%; transition:width 300ms ease; }
-
-  /* Modal */
-  .modal-back { position:fixed; inset:0; background:rgba(2,6,23,0.6); display:none; align-items:center; justify-content:center; z-index:60; }
-  .modal { width:760px; max-width:92%; background:linear-gradient(180deg,#081226,#081826); border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 20px 60px rgba(2,6,23,0.8); color:#dbeafe;}
-  .modal h3{ margin:0 0 12px 0; }
-  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .full{ grid-column: 1 / -1; }
-  .field{ display:flex; flex-direction:column; gap:6px; }
-  .field input, .field select, .field textarea{ padding:10px; border-radius:8px; border:none; background:rgba(255,255,255,0.02); color:#dbeafe; min-height:38px; }
-  .field textarea{ min-height:70px; resize:vertical; }
-  .modal-foot{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
-
-  /* Responsive */
-  @media (max-width:900px){
-    .grid{ grid-template-columns:repeat(2,1fr); }
-  }
-  @media (max-width:560px){
-    .grid{ grid-template-columns:1fr; }
-    .header{ flex-direction:column; align-items:flex-start; gap:12px; }
-  }
-</style>
+    /* Modal */
+    #formWrap{display:none;position:fixed;inset:0;background:rgba(2,6,23,0.6);align-items:center;justify-content:center;z-index:60}
+    #formBox{background:var(--card);padding:18px;border-radius:12px;min-width:320px;max-width:640px;margin:auto}
+    #formBox h3{margin:0 0 8px 0}
+    #formBox .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    #formBox input,#formBox select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <div>
-        <div class="title">Work-wise Table</div>
-        <div class="note">Manage your team's tasks — click a row action to edit or remove.</div>
-      </div>
-
+  <div class="container">
+    <header>
+      <h1>Work-wise Table (Shared)</h1>
       <div class="controls">
-        <input id="searchInput" class="search" placeholder="Search tasks, assignee or remarks..." />
-        <select id="statusFilter" class="select">
-          <option value="">All status</option>
+        <input id="search" type="text" placeholder="Search tasks, assignee or notes" />
+        <select id="filterStatus">
+          <option value="all">All status</option>
           <option value="Open">Open</option>
           <option value="In Progress">In Progress</option>
           <option value="Done">Done</option>
         </select>
-        <button id="addTaskBtn" class="btn btn-primary">+ Add Task</button>
-        <button id="exportCsvBtn" class="btn btn-ghost">Export CSV</button>
+        <button class="btn" id="addBtn">+ Add Task</button>
+        <button class="btn ghost" id="refreshBtn">Refresh</button>
       </div>
-    </div>
+    </header>
 
-    <div class="card">
-      <table aria-label="tasks-table">
+    <section class="card">
+      <div class="small">Shared database: all users see the same data. Changes sync every 5s (or press Refresh).</div>
+
+      <table id="workTable" aria-label="Work wise table">
         <thead>
           <tr>
-            <th style="width:48px">Sr.No.</th>
-            <th>Task</th>
-            <th>Assignee</th>
-            <th>Priority</th>
-            <th>Status</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Est Hrs</th>
-            <th>Progress</th>
-            <th>File</th>
-            <th style="width:150px">Actions</th>
+            <th data-key="srNo">Sr.No.</th>
+            <th data-key="task">Task</th>
+            <th data-key="assignee">Assignee</th>
+            <th data-key="priority">Priority</th>
+            <th data-key="status">Status</th>
+            <th data-key="start">Start</th>
+            <th data-key="end">End</th>
+            <th data-key="hrs">Est Hrs</th>
+            <th data-key="prog">Progress</th>
+            <th data-key="file">File</th>
+            <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tbody">
+          <!-- rows injected by JS -->
+        </tbody>
       </table>
-    </div>
+    </section>
   </div>
 
-  <!-- Modal -->
-  <div id="modalBack" class="modal-back" role="dialog" aria-hidden="true">
-    <div class="modal" role="document" aria-modal="true">
-      <h3 id="modalTitle">Add Task</h3>
-      <div class="grid">
-        <div class="field full">
-          <label style="color:var(--muted);font-size:13px">Task</label>
-          <input id="f_task" placeholder="Design landing page" />
-        </div>
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Assignee</label>
-          <input id="f_assignee" placeholder="Aisha" />
-        </div>
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Priority</label>
-          <select id="f_priority">
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Status</label>
-          <select id="f_status">
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Done</option>
-          </select>
-        </div>
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Start</label>
-          <input id="f_start" type="date" />
-        </div>
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">End</label>
-          <input id="f_end" type="date" />
-        </div>
-
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Est. Hrs</label>
-          <input id="f_est" type="number" min="0" />
-        </div>
-        <div class="field">
-          <label style="color:var(--muted);font-size:13px">Progress (%)</label>
-          <input id="f_progress" type="number" min="0" max="100" value="0" />
-        </div>
-
-        <div class="field full">
-          <label style="color:var(--muted);font-size:13px">Upload File</label>
-          <input id="f_file" type="file" />
-        </div>
-
-        <div class="field full">
-          <label style="color:var(--muted);font-size:13px">Remarks</label>
-          <textarea id="f_remarks" placeholder="Add a note or comment..."></textarea>
-        </div>
+  <!-- hidden form -->
+  <div id="formWrap">
+    <div id="formBox">
+      <h3 id="formTitle">Add Task</h3>
+      <div class="row">
+        <input id="fTask" placeholder="Task title" />
+        <input id="fAssignee" placeholder="Assignee" />
+      </div>
+      <div class="row">
+        <select id="fPriority"><option>Low</option><option>Medium</option><option>High</option></select>
+        <select id="fStatus"><option>Open</option><option>In Progress</option><option>Done</option></select>
+      </div>
+      <div class="row">
+        <input id="fStart" type="date" />
+        <input id="fEnd" type="date" />
+      </div>
+      <div class="row">
+        <input id="fHrs" placeholder="Estimated hours" type="number" />
+        <input id="fProg" placeholder="Progress %" type="number" max="100" min="0" />
       </div>
 
-      <div class="modal-foot">
-        <button id="cancelBtn" class="btn">Cancel</button>
-        <button id="saveBtn" class="btn btn-primary">Save task</button>
+      <!-- optional file input for attaching a file to a task -->
+      <div style="margin-bottom:8px">
+        <label class="small">Attach file (optional)</label><br>
+        <input id="taskFileInput" type="file" />
+      </div>
+
+      <div style="text-align:right">
+        <button id="cancelForm" style="margin-right:8px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent">Cancel</button>
+        <button id="saveForm" class="btn">Save</button>
       </div>
     </div>
   </div>
 
-<script>
-/* ============================
-   Config
-   ============================ */
-const STORAGE_KEY = 'tender_projects_v1';
-const GSHEET_WEBAPP_URL = ''; // optionally set your Apps Script Web App URL to sync (POST)
+  <script>
+    // ********* CONFIG *********
+    const API = "https://script.google.com/macros/s/AKfycbxeQtXbnghWf8YYrY3ytShl_SLqI_XDmfwBgIWro2l81soPo-1OBFYeJRdVWcmDwMYu/execsss";
+    // polling interval (ms)
+    const POLL_MS = 5000;
 
-/* ============================
-   Utilities
-   ============================ */
-function qs(id){ return document.getElementById(id); }
-function uid(){ return Date.now() + Math.floor(Math.random()*1000); }
-function saveAll(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
-function loadAll(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }catch(e){ return []; } }
-function formatDate(d){ if(!d) return ''; return d; }
+    // ********* small helpers *********
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function formatSize(bytes){
+      if(!bytes) return '-';
+      if(bytes < 1024) return bytes + ' B';
+      if(bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
+      return (bytes/1024/1024).toFixed(1)+' MB';
+    }
 
-/* convert File -> base64 dataURL */
-function toBase64(file){ 
-  return new Promise((res, rej)=>{
+    // ********* API helpers *********
+
+// GET helper (reads) — uses simple GET
+async function apiGet() {
+  const res = await fetch(API);
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch(e) { return { success:false, raw: txt }; }
+}
+
+// POST helper (form-encoded) — avoids preflight by sending application/x-www-form-urlencoded
+async function apiPost(payload) {
+  // payload is an object -> convert to URLSearchParams (simple request, no custom headers)
+  const form = new URLSearchParams();
+  for (const k in payload) {
+    if (payload[k] === undefined || payload[k] === null) continue;
+    form.append(k, String(payload[k]));
+  }
+  const res = await fetch(API, {
+    method: 'POST',
+    body: form // browser sends application/x-www-form-urlencoded automatically
+  });
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch(e) { return { success:false, raw: txt }; }
+}
+
+
+    // ********* UI state *********
+    let editingId = null;
+    const tbody = document.getElementById('tbody');
+
+    // ********* Render *********
+    function renderRows(list){
+      tbody.innerHTML = '';
+      list.forEach(row=>{
+        // our row fields: srNo, task, assignee, priority, status, start, end, estHrs, progress, file
+        const tr = document.createElement('tr');
+        const fileCell = row.file ? `<a href="${escapeHtml(row.file)}" target="_blank">Open</a>` : '-';
+        tr.innerHTML = `
+          <td data-label="Sr.No.">${escapeHtml(row.srNo)}</td>
+          <td data-label="Task">${escapeHtml(row.task)}</td>
+          <td data-label="Assignee">${escapeHtml(row.assignee)}</td>
+          <td data-label="Priority">${escapeHtml(row.priority)}</td>
+          <td data-label="Status"><span class="tag ${row.status==='Open'?'open':row.status==='In Progress'?'progress':'done'}">${escapeHtml(row.status)}</span></td>
+          <td data-label="Start">${escapeHtml(row.start||'-')}</td>
+          <td data-label="End">${escapeHtml(row.end||'-')}</td>
+          <td data-label="Est Hrs">${escapeHtml(row.estHrs||0)}</td>
+          <td data-label="Progress">
+            <div class="flex">
+              <div class="progressbar" title="${escapeHtml(String(row.progress||0))}%"><div class="progress-inner" style="width:${Number(row.progress||0)}%"></div></div>
+              <div class="small">${escapeHtml(String(row.progress||0))}%</div>
+            </div>
+          </td>
+          <td data-label="File">${fileCell}</td>
+          <td class="actions">
+            <button onclick="startEdit('${escapeHtml(row.srNo)}')">Edit</button>
+            <button onclick="deleteTaskHandler('${escapeHtml(row.srNo)}')">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ********* Load tasks from server *********
+    async function loadTasks(){
+      try {
+        const res = await apiFetch('GET');
+        if (!res || !res.success) {
+          console.error('Load tasks failed', res);
+          return;
+        }
+        // res.data is array of rows as returned by Apps Script
+        const mapped = (res.data||[]).map(r => ({
+          srNo: r.srNo,
+          task: r.task,
+          assignee: r.assignee,
+          priority: r.priority,
+          status: r.status,
+          start: r.start,
+          end: r.end,
+          estHrs: r.estHrs,
+          progress: r.progress,
+          file: r.file || ''
+        }));
+        renderRows(mapped);
+      } catch (err) {
+        console.error('loadTasks error', err);
+      }
+    }
+
+    // ********* Create task (POST) *********
+  async function createTaskOnServer(row) {
+  const payload = Object.assign({}, row, { action: 'create' });
+  const res = await apiPost(payload);
+  return res && res.success;
+}
+
+    // ********* Update task (PUT) *********
+    async function updateTaskOnServer(row) {
+  const payload = Object.assign({}, row, { action: 'update', srNo: row.srNo || row.id || editingId });
+  const res = await apiPost(payload);
+  return res && res.success;
+}
+
+
+    // ********* Delete (DELETE) *********
+    async function deleteTaskOnServer(srNo) {
+  const res = await apiPost({ action: 'delete', srNo: srNo });
+  return res && res.success;
+}
+
+
+    // ********* Upload file to Drive via server *********
+    async function uploadFileToDrive(file, uploaderName) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
     const reader = new FileReader();
-    reader.onload = ()=> res(reader.result);
-    reader.onerror = err => rej(err);
+    reader.onload = async function(e) {
+      const dataUri = e.target.result; // data:<mime>;base64,.....
+      const payload = {
+        action: "uploadFile",
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        base64: dataUri,
+        uploader: uploaderName || ''
+      };
+      try {
+        const res = await apiPost(payload);
+        if (res && res.success) resolve(res.driveUrl || null);
+        else reject(res);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
 }
 
-/* ============================
-   Google Sheets optional sync
-   (fire-and-forget)
-   ============================ */
-function syncToGoogle(payload){
-  if(!GSHEET_WEBAPP_URL) return;
-  try{
-    fetch(GSHEET_WEBAPP_URL, {
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-  }catch(e){
-    console.warn('Sync failed', e);
-  }
-}
+    // ********* UI wiring *********
+    document.getElementById('refreshBtn').addEventListener('click', loadTasks);
+    document.getElementById('addBtn').addEventListener('click', ()=>openForm());
+    document.getElementById('cancelForm').addEventListener('click', closeForm);
+    document.getElementById('saveForm').addEventListener('click', saveFormToServer);
 
-/* ============================
-   Rendering / DOM
-   ============================ */
-function statusClass(s){
-  if(!s) return 'pill other';
-  s = s.toLowerCase();
-  if(s.includes('progress') || s.includes('in progress')) return 'pill progress';
-  if(s.includes('open')) return 'pill open';
-  if(s.includes('done')) return 'pill done';
-  return 'pill other';
-}
+    // search + filter
+    document.getElementById('search').addEventListener('input', applyFiltersLocal);
+    document.getElementById('filterStatus').addEventListener('change', applyFiltersLocal);
+    let lastLoadedList = [];
 
-function renderRow(item, index){
-  const tr = document.createElement('tr');
-  tr.dataset.id = String(item.id);
-
-  // progress bar html
-  const progressPct = Number(item.progress || 0);
-  const progressHtml = `<div style="display:flex;align-items:center;gap:8px;">
-                         <div class="progress-wrap" aria-hidden="true"><div class="progress-bar" style="width:${progressPct}%"></div></div>
-                         <div style="font-size:13px;color:var(--muted);min-width:30px">${progressPct}%</div>
-                        </div>`;
-
-  // file column - show filename and view button if present
-  let fileHtml = '-';
-  if(item.file && item.file.name && item.file.content){
-    const safeName = item.file.name.replace(/"/g,'&quot;');
-    // make a view button which will open base64 data in new tab
-    fileHtml = `<div style="display:flex; gap:8px; align-items:center;">
-                  <span style="color:var(--muted); font-size:13px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeName}</span>
-                  <button class="a-view" data-file="${index}" aria-label="View">View</button>
-                </div>`;
-  }
-
-  tr.innerHTML = `
-    <td style="width:48px">${index+1}</td>
-    <td>${escapeHtml(item.task || '')}</td>
-    <td>${escapeHtml(item.assignee || '')}</td>
-    <td>${escapeHtml(item.priority || '')}</td>
-    <td><span class="${statusClass(item.status)}">${escapeHtml(item.status || '')}</span></td>
-    <td>${escapeHtml(formatDate(item.start))}</td>
-    <td>${escapeHtml(formatDate(item.end))}</td>
-    <td>${escapeHtml(item.est || '')}</td>
-    <td>${progressHtml}</td>
-    <td>${fileHtml}</td>
-    <td class="actions">
-      <button class="a-edit" data-id="${item.id}" aria-label="Edit">Edit</button>
-      <button class="a-del" data-id="${item.id}" aria-label="Delete">Delete</button>
-    </td>
-  `;
-
-  return tr;
-}
-
-function escapeHtml(str){
-  if(str == null) return '';
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-
-function refreshTable(filtered){
-  const list = filtered || loadAll();
-  const tbodyEl = document.getElementById('tbody');
-  tbodyEl.innerHTML = '';
-  list.forEach((it, idx)=> tbodyEl.appendChild(renderRow(it, idx)));
-  // attach handlers
-  tbodyEl.querySelectorAll('.a-del').forEach(btn=> btn.addEventListener('click', onDelete));
-  tbodyEl.querySelectorAll('.a-edit').forEach(btn=> btn.addEventListener('click', onEdit));
-  tbodyEl.querySelectorAll('.a-view').forEach(btn=> btn.addEventListener('click', onViewFile));
-}
-
-/* ============================
-   CRUD operations (make async for file handling)
-   ============================ */
-async function addTaskFromForm(){
-  const task = qs('f_task').value.trim();
-  if(!task){ alert('Task name required'); return; }
-
-  const fileInput = qs('f_file');
-  let fileObj = null;
-  if(fileInput && fileInput.files && fileInput.files.length > 0){
-    const file = fileInput.files[0];
-    try {
-      const content = await toBase64(file);
-      fileObj = { name: file.name, content };
-    } catch(e){
-      console.warn('File read failed', e);
-      fileObj = null;
+    function applyFiltersLocal(){
+      const q = document.getElementById('search').value.toLowerCase();
+      const status = document.getElementById('filterStatus').value;
+      let list = lastLoadedList.slice();
+      if (status !== 'all') list = list.filter(r => (r.status||'').toLowerCase() === status.toLowerCase());
+      if (q) list = list.filter(r => (r.task+' '+r.assignee+' '+(r.file||'')).toLowerCase().includes(q));
+      renderRows(list);
     }
-  }
 
-  const obj = {
-    id: uid(),
-    task: task,
-    assignee: qs('f_assignee').value.trim(),
-    priority: qs('f_priority').value,
-    status: qs('f_status').value,
-    start: qs('f_start').value,
-    end: qs('f_end').value,
-    est: qs('f_est').value,
-    progress: qs('f_progress').value || 0,
-    remarks: qs('f_remarks').value.trim(),
-    file: fileObj
-  };
-  const all = loadAll();
-  all.push(obj);
-  saveAll(all);
-  syncToGoogle({action:'add', data:obj});
-  refreshTable();
-  closeModal();
-  clearForm();
-}
+    // open/close form
+    function openForm(id){
+      editingId = id || null;
+      document.getElementById('formTitle').textContent = id ? 'Edit Task' : 'Add Task';
+      // clear values
+      document.getElementById('fTask').value = '';
+      document.getElementById('fAssignee').value = '';
+      document.getElementById('fPriority').value = 'Medium';
+      document.getElementById('fStatus').value = 'Open';
+      document.getElementById('fStart').value = '';
+      document.getElementById('fEnd').value = '';
+      document.getElementById('fHrs').value = '';
+      document.getElementById('fProg').value = '';
+      document.getElementById('taskFileInput').value = '';
 
-async function updateTaskFromForm(editId){
-  const all = loadAll();
-  const idx = all.findIndex(x=> String(x.id) === String(editId));
-  if(idx === -1) return alert('Task not found');
-  const old = all[idx];
+      if (id) {
+        // populate from lastLoadedList
+        const found = lastLoadedList.find(x => String(x.srNo) === String(id));
+        if (found) {
+          document.getElementById('fTask').value = found.task || '';
+          document.getElementById('fAssignee').value = found.assignee || '';
+          document.getElementById('fPriority').value = found.priority || 'Medium';
+          document.getElementById('fStatus').value = found.status || 'Open';
+          document.getElementById('fStart').value = found.start || '';
+          document.getElementById('fEnd').value = found.end || '';
+          document.getElementById('fHrs').value = found.estHrs || '';
+          document.getElementById('fProg').value = found.progress || '';
+        }
+      }
 
-  const fileInput = qs('f_file');
-  let fileObj = old.file || null;
-  if(fileInput && fileInput.files && fileInput.files.length > 0){
-    try {
-      const content = await toBase64(fileInput.files[0]);
-      fileObj = { name: fileInput.files[0].name, content };
-    } catch(e) { console.warn('File read failed', e); }
-  }
+      document.getElementById('formWrap').style.display = 'flex';
+    }
+    function closeForm(){ document.getElementById('formWrap').style.display = 'none'; editingId = null; }
 
-  const updated = {
-    ...old,
-    task: qs('f_task').value.trim(),
-    assignee: qs('f_assignee').value.trim(),
-    priority: qs('f_priority').value,
-    status: qs('f_status').value,
-    start: qs('f_start').value,
-    end: qs('f_end').value,
-    est: qs('f_est').value,
-    progress: qs('f_progress').value || 0,
-    remarks: qs('f_remarks').value.trim(),
-    file: fileObj
-  };
-  all[idx] = updated;
-  saveAll(all);
-  syncToGoogle({action:'edit', data:updated});
-  refreshTable();
-  closeModal();
-  clearForm();
-}
+    async function saveFormToServer(){
+      const row = {
+        task: document.getElementById('fTask').value.trim(),
+        assignee: document.getElementById('fAssignee').value.trim(),
+        priority: document.getElementById('fPriority').value,
+        status: document.getElementById('fStatus').value,
+        start: document.getElementById('fStart').value,
+        end: document.getElementById('fEnd').value,
+        estHrs: Number(document.getElementById('fHrs').value) || 0,
+        progress: Number(document.getElementById('fProg').value) || 0,
+        file: ''
+      };
 
-function deleteTask(id){
-  let all = loadAll();
-  all = all.filter(x=> String(x.id) !== String(id));
-  saveAll(all);
-  syncToGoogle({action:'delete', id});
-  refreshTable();
-}
+      if (!row.task) { alert('Task title required'); return; }
 
-/* ============================
-   Modal + events
-   ============================ */
-let editingId = null;
-const modalBack = qs('modalBack');
-const saveBtn = qs('saveBtn');
-const cancelBtn = qs('cancelBtn');
-const addTaskBtn = qs('addTaskBtn');
-const exportCsvBtn = qs('exportCsvBtn');
+      // optional file upload
+      const fileInput = document.getElementById('taskFileInput');
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        try {
+          const driveUrl = await uploadFileToDrive(fileInput.files[0], row.assignee || '');
+          row.file = driveUrl || '';
+        } catch(err) {
+          console.error('file upload error', err);
+          alert('File upload failed — check console');
+          return;
+        }
+      }
 
-function openModal(asEdit=false, id=null){
-  editingId = asEdit ? id : null;
-  qs('modalTitle').innerText = asEdit ? 'Edit Task' : 'Add Task';
-  if(asEdit){
-    const all = loadAll();
-    // use string-safe matching
-    const it = all.find(x=> String(x.id) === String(id));
-    if(!it){ alert('Item not found'); return; }
-    qs('f_task').value = it.task || '';
-    qs('f_assignee').value = it.assignee || '';
-    qs('f_priority').value = it.priority || 'Medium';
-    qs('f_status').value = it.status || 'Open';
-    qs('f_start').value = it.start || '';
-    qs('f_end').value = it.end || '';
-    qs('f_est').value = it.est || '';
-    qs('f_progress').value = it.progress || 0;
-    qs('f_remarks').value = it.remarks || '';
-    // note: file input can't be prefilled for security; show name in remarks (optional)
-    // you can view existing file via the table's View button
-  } else {
-    clearForm();
-  }
-  modalBack.style.display = 'flex';
-  modalBack.setAttribute('aria-hidden','false');
-}
+      if (editingId) {
+        row.srNo = editingId;
+        const ok = await updateTaskOnServer(row);
+        if (ok) { closeForm(); await loadTasks(); }
+        else alert('Update failed — check console');
+      } else {
+        const ok = await createTaskOnServer(row);
+        if (ok) { closeForm(); await loadTasks(); }
+        else alert('Create failed — check console');
+      }
+    }
 
-function closeModal(){
-  modalBack.style.display = 'none';
-  modalBack.setAttribute('aria-hidden','true');
-  editingId = null;
-}
+    // for Edit buttons
+    window.startEdit = function(id){
+      openForm(id);
+    };
 
-function clearForm(){
-  qs('f_task').value = '';
-  qs('f_assignee').value = '';
-  qs('f_priority').value = 'Medium';
-  qs('f_status').value = 'Open';
-  qs('f_start').value = '';
-  qs('f_end').value = '';
-  qs('f_est').value = '';
-  qs('f_progress').value = 0;
-  qs('f_remarks').value = '';
-  // reset file input
-  const f = qs('f_file');
-  if(f) f.value = '';
-}
+    // delete action
+    window.deleteTaskHandler = async function(id){
+      if (!confirm('Delete this task?')) return;
+      const ok = await deleteTaskOnServer(id);
+      if (ok) await loadTasks();
+      else alert('Delete failed');
+    };
 
-/* ============================
-   Handlers
-   ============================ */
-function onEdit(e){
-  const id = e.currentTarget.dataset.id;
-  openModal(true, id);
-}
+    // initial load and polling
+    async function fullLoad(){
+      try {
+        const res = await apiGet();
+        if (res && res.success) {
+          lastLoadedList = (res.data || []).map(r => ({
+            srNo: r.srNo,
+            task: r.task,
+            assignee: r.assignee,
+            priority: r.priority,
+            status: r.status,
+            start: r.start,
+            end: r.end,
+            estHrs: r.estHrs,
+            progress: r.progress,
+            file: r.file || ''
+          }));
+          renderRows(lastLoadedList);
+        } else {
+          console.error('Initial load failed', res);
+        }
+      } catch (err) {
+        console.error('fullLoad error', err);
+      }
+    }
 
-function onDelete(e){
-  const id = e.currentTarget.dataset.id;
-  if(confirm('Delete this task?')) deleteTask(id);
-}
+    // alias used earlier by loadTasks
+    async function loadTasks(){ await fullLoad(); }
 
-addTaskBtn.addEventListener('click', ()=> openModal(false));
+    // initial
+    fullLoad();
+    setInterval(loadTasks, POLL_MS);
 
-cancelBtn.addEventListener('click', closeModal);
-saveBtn.addEventListener('click', async ()=>{
-  if(editingId) await updateTaskFromForm(editingId);
-  else await addTaskFromForm();
-});
-
-/* Keyboard escape to close */
-document.addEventListener('keydown', (ev)=>{
-  if(ev.key === 'Escape') closeModal();
-});
-
-/* click outside modal to close */
-modalBack.addEventListener('click', (ev)=>{
-  if(ev.target === modalBack) closeModal();
-});
-
-/* search & filter */
-qs('searchInput').addEventListener('input', (e)=>{
-  applyFilters();
-});
-qs('statusFilter').addEventListener('change', (e)=>{
-  applyFilters();
-});
-
-function applyFilters(){
-  const q = qs('searchInput').value.trim().toLowerCase();
-  const status = qs('statusFilter').value;
-  const all = loadAll();
-  const filtered = all.filter(item=>{
-    const matchesQ = !q || (
-      (item.task||'').toLowerCase().includes(q) ||
-      (item.assignee||'').toLowerCase().includes(q) ||
-      (item.remarks||'').toLowerCase().includes(q)
-    );
-    const matchesStatus = !status || (item.status === status);
-    return matchesQ && matchesStatus;
-  });
-  refreshTable(filtered);
-}
-
-/* export CSV */
-exportCsvBtn.addEventListener('click', ()=>{
-  const rows = loadAll();
-  if(!rows.length){ alert('No data to export'); return; }
-  const headers = ['id','task','assignee','priority','status','start','end','est','progress','remarks'];
-  const csv = [headers.join(',')].concat(rows.map(r => headers.map(h=>{
-    const val = (r[h] == null) ? '' : String(r[h]).replace(/"/g,'""');
-    return `"${val}"`;
-  }).join(','))).join('\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'projects_export.csv';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-});
-
-/* attach delete/edit handlers for delegated rows (in-case) */
-function attachDelegated(){
-  document.getElementById('tbody').addEventListener('click', (e)=>{
-    if(e.target.matches('.a-edit')) onEdit({currentTarget:e.target});
-    if(e.target.matches('.a-del')) onDelete({currentTarget:e.target});
-    if(e.target.matches('.a-view')) onViewFile({currentTarget:e.target});
-  });
-}
-
-/* View file handler - opens base64 content in new tab */
-function onViewFile(e){
-  const fileIndex = Number(e.currentTarget.getAttribute('data-file'));
-  const list = loadAll();
-  const item = list[fileIndex];
-  if(!item || !item.file || !item.file.content){ alert('File not found'); return; }
-  // open in new tab
-  const w = window.open();
-  if(!w) { alert('Pop-up blocked — allow pop-ups to view files'); return; }
-  w.document.write(`<iframe src="${item.file.content}" frameborder="0" style="width:100%;height:100vh"></iframe>`);
-  w.document.title = item.file.name || 'File';
-}
-
-/* init */
-(function init(){
-  attachDelegated();
-  refreshTable();
-})();
-</script>
+    // accessibility: close form on ESC
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeForm(); });
+  </script>
 </body>
 </html>
