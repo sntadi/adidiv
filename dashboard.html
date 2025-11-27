@@ -141,8 +141,16 @@
     // ********* API helpers *********
 
 // GET helper (reads) — uses simple GET
-async function apiGet() {
-  const res = await fetch(API);
+async function apiPost(payload) {
+  const form = new URLSearchParams();
+  for (const k in payload) {
+    if (payload[k] === undefined || payload[k] === null) continue;
+    form.append(k, String(payload[k]));
+  }
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: form
+  });
   const txt = await res.text();
   try { return JSON.parse(txt); } catch(e) { return { success:false, raw: txt }; }
 }
@@ -155,7 +163,7 @@ async function apiPost(payload) {
     if (payload[k] === undefined || payload[k] === null) continue;
     form.append(k, String(payload[k]));
   }
-  const res = await fetch(API, {
+  const res = await fetch(API_URL, {
     method: 'POST',
     body: form // browser sends application/x-www-form-urlencoded automatically
   });
