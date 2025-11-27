@@ -124,309 +124,154 @@
   </div>
 
   <script>
-    // ********* CONFIG *********
-    const API_URL = "https://script.google.com/macros/s/AKfycbxeQtXbnghWf8YYrY3ytShl_SLqI_XDmfwBgIWro2l81soPo-1OBFYeJRdVWcmDwMYu/exec";
-    // polling interval (ms)
-    const POLL_MS = 5000;
 
-    // ********* small helpers *********
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
-    function formatSize(bytes){
-      if(!bytes) return '-';
-      if(bytes < 1024) return bytes + ' B';
-      if(bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
-      return (bytes/1024/1024).toFixed(1)+' MB';
-    }
+// ========================
+// 1. SET API URL
+// ========================
+const API = "https://script.google.com/macros/s/AKfycbxeQtXbnghWf8YYrY3ytShl_SLqI_XDmfwBgIWro2l81soPo-1OBFYeJRdVWcmDwMYu/exec";
 
-    // ********* API helpers *********
+// ========================
+// 2. API WRAPPERS
+// ========================
+async function apiGet() {
+  const url = `${API}?action=read`;
+  const r = await fetch(url);
+  return await r.json();
+}
 
-// GET helper (reads) — uses simple GET
 async function apiPost(payload) {
-  const form = new URLSearchParams();
-  for (const k in payload) {
-    if (payload[k] === undefined || payload[k] === null) continue;
-    form.append(k, String(payload[k]));
-  }
-  const res = await fetch(API_URL, {
+  const r = await fetch(API, {
     method: 'POST',
-    body: form
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' }
   });
-  const txt = await res.text();
-  try { return JSON.parse(txt); } catch(e) { return { success:false, raw: txt }; }
+  return await r.json();
 }
 
-// POST helper (form-encoded) — avoids preflight by sending application/x-www-form-urlencoded
-async function apiPost(payload) {
-  // payload is an object -> convert to URLSearchParams (simple request, no custom headers)
-  const form = new URLSearchParams();
-  for (const k in payload) {
-    if (payload[k] === undefined || payload[k] === null) continue;
-    form.append(k, String(payload[k]));
+async function apiDelete(srNo) {
+  const url = `${API}?action=delete&srNo=${srNo}`;
+  const r = await fetch(url, { method: 'POST' });
+  return await r.json();
+}
+
+// ========================
+// 3. LOAD ALL TASKS
+// ========================
+async function loadTasks() {
+  try {
+    const res = await apiGet();   // FIXED HERE ✔
+
+    if (!res || !res.success) {
+      console.error('Load tasks failed', res);
+      return;
+    }
+
+    const tasks = (res.data || []).map(r => ({
+      srNo: r.srNo,
+      task: r.task,
+      assignee: r.assignee,
+      priority: r.priority,
+      status: r.status,
+      start: r.start,
+      end: r.end,
+      estHrs: r.estHrs,
+      progress: r.progress,
+      file: r.file || ''
+    }));
+
+    renderRows(tasks);
+
+  } catch (err) {
+    console.error("loadTasks error", err);
   }
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: form // browser sends application/x-www-form-urlencoded automatically
-  });
-  const txt = await res.text();
-  try { return JSON.parse(txt); } catch(e) { return { success:false, raw: txt }; }
 }
 
+// ========================
+// 4. RENDER TABLE ROWS
+// ========================
+function renderRows(data) {
+  const tbody = document.getElementById("taskBody");
+  tbody.innerHTML = "";
 
-    // ********* UI state *********
-    let editingId = null;
-    const tbody = document.getElementById('tbody');
-
-    // ********* Render *********
-    function renderRows(list){
-      tbody.innerHTML = '';
-      list.forEach(row=>{
-        // our row fields: srNo, task, assignee, priority, status, start, end, estHrs, progress, file
-        const tr = document.createElement('tr');
-        const fileCell = row.file ? `<a href="${escapeHtml(row.file)}" target="_blank">Open</a>` : '-';
-        tr.innerHTML = `
-          <td data-label="Sr.No.">${escapeHtml(row.srNo)}</td>
-          <td data-label="Task">${escapeHtml(row.task)}</td>
-          <td data-label="Assignee">${escapeHtml(row.assignee)}</td>
-          <td data-label="Priority">${escapeHtml(row.priority)}</td>
-          <td data-label="Status"><span class="tag ${row.status==='Open'?'open':row.status==='In Progress'?'progress':'done'}">${escapeHtml(row.status)}</span></td>
-          <td data-label="Start">${escapeHtml(row.start||'-')}</td>
-          <td data-label="End">${escapeHtml(row.end||'-')}</td>
-          <td data-label="Est Hrs">${escapeHtml(row.estHrs||0)}</td>
-          <td data-label="Progress">
-            <div class="flex">
-              <div class="progressbar" title="${escapeHtml(String(row.progress||0))}%"><div class="progress-inner" style="width:${Number(row.progress||0)}%"></div></div>
-              <div class="small">${escapeHtml(String(row.progress||0))}%</div>
-            </div>
-          </td>
-          <td data-label="File">${fileCell}</td>
-          <td class="actions">
-            <button onclick="startEdit('${escapeHtml(row.srNo)}')">Edit</button>
-            <button onclick="deleteTaskHandler('${escapeHtml(row.srNo)}')">Delete</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // ********* Load tasks from server *********
-    async function loadTasks(){
-      try {
-        const res = await apiFetch('GET');
-        if (!res || !res.success) {
-          console.error('Load tasks failed', res);
-          return;
-        }
-        // res.data is array of rows as returned by Apps Script
-        const mapped = (res.data||[]).map(r => ({
-          srNo: r.srNo,
-          task: r.task,
-          assignee: r.assignee,
-          priority: r.priority,
-          status: r.status,
-          start: r.start,
-          end: r.end,
-          estHrs: r.estHrs,
-          progress: r.progress,
-          file: r.file || ''
-        }));
-        renderRows(mapped);
-      } catch (err) {
-        console.error('loadTasks error', err);
-      }
-    }
-
-    // ********* Create task (POST) *********
-  async function createTaskOnServer(row) {
-  const payload = Object.assign({}, row, { action: 'create' });
-  const res = await apiPost(payload);
-  return res && res.success;
-}
-
-    // ********* Update task (PUT) *********
-    async function updateTaskOnServer(row) {
-  const payload = Object.assign({}, row, { action: 'update', srNo: row.srNo || row.id || editingId });
-  const res = await apiPost(payload);
-  return res && res.success;
-}
-
-
-    // ********* Delete (DELETE) *********
-    async function deleteTaskOnServer(srNo) {
-  const res = await apiPost({ action: 'delete', srNo: srNo });
-  return res && res.success;
-}
-
-
-    // ********* Upload file to Drive via server *********
-    async function uploadFileToDrive(file, uploaderName) {
-  return new Promise((resolve, reject) => {
-    if (!file) return resolve(null);
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const dataUri = e.target.result; // data:<mime>;base64,.....
-      const payload = {
-        action: "uploadFile",
-        name: file.name,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        base64: dataUri,
-        uploader: uploaderName || ''
-      };
-      try {
-        const res = await apiPost(payload);
-        if (res && res.success) resolve(res.driveUrl || null);
-        else reject(res);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(file);
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.srNo}</td>
+      <td>${row.task}</td>
+      <td>${row.assignee}</td>
+      <td>${row.priority}</td>
+      <td>${row.status}</td>
+      <td>${row.start}</td>
+      <td>${row.end}</td>
+      <td>${row.estHrs}</td>
+      <td>${row.progress}%</td>
+      <td><a href="${row.file}" target="_blank">File</a></td>
+      <td>
+        <button onclick="editTask(${row.srNo})">Edit</button>
+        <button onclick="removeTask(${row.srNo})">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 }
 
-    // ********* UI wiring *********
-    document.getElementById('refreshBtn').addEventListener('click', loadTasks);
-    document.getElementById('addBtn').addEventListener('click', ()=>openForm());
-    document.getElementById('cancelForm').addEventListener('click', closeForm);
-    document.getElementById('saveForm').addEventListener('click', saveFormToServer);
+// ========================
+// 5. SAVE / CREATE TASK
+// ========================
+async function saveFormToServer() {
+  const data = {
+    action: "write",
+    srNo: document.getElementById("srNo").value,
+    task: document.getElementById("task").value,
+    assignee: document.getElementById("assignee").value,
+    priority: document.getElementById("priority").value,
+    status: document.getElementById("status").value,
+    start: document.getElementById("start").value,
+    end: document.getElementById("end").value,
+    estHrs: document.getElementById("estHrs").value,
+    progress: document.getElementById("progress").value,
+    file: document.getElementById("file").value
+  };
 
-    // search + filter
-    document.getElementById('search').addEventListener('input', applyFiltersLocal);
-    document.getElementById('filterStatus').addEventListener('change', applyFiltersLocal);
-    let lastLoadedList = [];
+  const res = await apiPost(data);
 
-    function applyFiltersLocal(){
-      const q = document.getElementById('search').value.toLowerCase();
-      const status = document.getElementById('filterStatus').value;
-      let list = lastLoadedList.slice();
-      if (status !== 'all') list = list.filter(r => (r.status||'').toLowerCase() === status.toLowerCase());
-      if (q) list = list.filter(r => (r.task+' '+r.assignee+' '+(r.file||'')).toLowerCase().includes(q));
-      renderRows(list);
-    }
+  if (res.success) {
+    alert("Saved successfully!");
+    loadTasks();
+  } else {
+    alert("Save failed.");
+  }
+}
 
-    // open/close form
-    function openForm(id){
-      editingId = id || null;
-      document.getElementById('formTitle').textContent = id ? 'Edit Task' : 'Add Task';
-      // clear values
-      document.getElementById('fTask').value = '';
-      document.getElementById('fAssignee').value = '';
-      document.getElementById('fPriority').value = 'Medium';
-      document.getElementById('fStatus').value = 'Open';
-      document.getElementById('fStart').value = '';
-      document.getElementById('fEnd').value = '';
-      document.getElementById('fHrs').value = '';
-      document.getElementById('fProg').value = '';
-      document.getElementById('taskFileInput').value = '';
+// ========================
+// 6. DELETE TASK
+// ========================
+async function removeTask(srNo) {
+  if (!confirm("Delete this task?")) return;
 
-      if (id) {
-        // populate from lastLoadedList
-        const found = lastLoadedList.find(x => String(x.srNo) === String(id));
-        if (found) {
-          document.getElementById('fTask').value = found.task || '';
-          document.getElementById('fAssignee').value = found.assignee || '';
-          document.getElementById('fPriority').value = found.priority || 'Medium';
-          document.getElementById('fStatus').value = found.status || 'Open';
-          document.getElementById('fStart').value = found.start || '';
-          document.getElementById('fEnd').value = found.end || '';
-          document.getElementById('fHrs').value = found.estHrs || '';
-          document.getElementById('fProg').value = found.progress || '';
-        }
-      }
+  const res = await apiDelete(srNo);
+  if (res.success) {
+    alert("Deleted!");
+    loadTasks();
+  }
+}
 
-      document.getElementById('formWrap').style.display = 'flex';
-    }
-    function closeForm(){ document.getElementById('formWrap').style.display = 'none'; editingId = null; }
+// ========================
+// 7. INITIAL LOAD
+// ========================
+async function fullLoad() {
+  try {
+    await loadTasks();
+  } catch (err) {
+    console.error("fullLoad error", err);
+  }
+}
 
-    async function saveFormToServer(){
-      const row = {
-        task: document.getElementById('fTask').value.trim(),
-        assignee: document.getElementById('fAssignee').value.trim(),
-        priority: document.getElementById('fPriority').value,
-        status: document.getElementById('fStatus').value,
-        start: document.getElementById('fStart').value,
-        end: document.getElementById('fEnd').value,
-        estHrs: Number(document.getElementById('fHrs').value) || 0,
-        progress: Number(document.getElementById('fProg').value) || 0,
-        file: ''
-      };
+document.addEventListener("DOMContentLoaded", fullLoad);
 
-      if (!row.task) { alert('Task title required'); return; }
+// Auto refresh every 60 sec
+setInterval(loadTasks, 60000);
 
-      // optional file upload
-      const fileInput = document.getElementById('taskFileInput');
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        try {
-          const driveUrl = await uploadFileToDrive(fileInput.files[0], row.assignee || '');
-          row.file = driveUrl || '';
-        } catch(err) {
-          console.error('file upload error', err);
-          alert('File upload failed — check console');
-          return;
-        }
-      }
-
-      if (editingId) {
-        row.srNo = editingId;
-        const ok = await updateTaskOnServer(row);
-        if (ok) { closeForm(); await loadTasks(); }
-        else alert('Update failed — check console');
-      } else {
-        const ok = await createTaskOnServer(row);
-        if (ok) { closeForm(); await loadTasks(); }
-        else alert('Create failed — check console');
-      }
-    }
-
-    // for Edit buttons
-    window.startEdit = function(id){
-      openForm(id);
-    };
-
-    // delete action
-    window.deleteTaskHandler = async function(id){
-      if (!confirm('Delete this task?')) return;
-      const ok = await deleteTaskOnServer(id);
-      if (ok) await loadTasks();
-      else alert('Delete failed');
-    };
-
-    // initial load and polling
-    async function fullLoad(){
-      try {
-        const res = await apiGet();
-        if (res && res.success) {
-          lastLoadedList = (res.data || []).map(r => ({
-            srNo: r.srNo,
-            task: r.task,
-            assignee: r.assignee,
-            priority: r.priority,
-            status: r.status,
-            start: r.start,
-            end: r.end,
-            estHrs: r.estHrs,
-            progress: r.progress,
-            file: r.file || ''
-          }));
-          renderRows(lastLoadedList);
-        } else {
-          console.error('Initial load failed', res);
-        }
-      } catch (err) {
-        console.error('fullLoad error', err);
-      }
-    }
-
-    // alias used earlier by loadTasks
-    async function loadTasks(){ await fullLoad(); }
-
-    // initial
-    fullLoad();
-    setInterval(loadTasks, POLL_MS);
-
-    // accessibility: close form on ESC
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeForm(); });
-  </script>
+</script>
 </body>
 </html>
